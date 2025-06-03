@@ -145,6 +145,28 @@ document.addEventListener("keydown", e => {
     else if (e.key === "ArrowDown") move("down");
 });
 
+let startX, startY;
+
+document.addEventListener("touchstart", e => {
+  const touch = e.touches[0];
+  startX = touch.clientX;
+  startY = touch.clientY;
+});
+
+document.addEventListener("touchend", e => {
+  const touch = e.changedTouches[0];
+  const deltaX = touch.clientX - startX;
+  const deltaY = touch.clientY - startY;
+
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    if (deltaX > 30) move("right");
+    else if (deltaX < -30) move("left");
+  } else {
+    if (deltaY > 30) move("down");
+    else if (deltaY < -30) move("up");
+  }
+});
+
 createGrid();
 generateTile();
 generateTile();
