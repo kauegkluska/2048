@@ -1,0 +1,36 @@
+ body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #faf8ef;
+      margin: 0;
+    }
+
+    h1 {
+      margin: 20px;
+    }
+
+    .score {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      grid-gap: 5px;
+      margin: auto;
+      width: 340px;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #eee4da;
+      background-size: cover;
+      background-position: center;
+      border-radius: 5px;
+    }
+
+    .cell[data-value="0"] {
+      background: #eee4da;
+    }
