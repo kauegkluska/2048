@@ -135,8 +135,53 @@ function move(direction) {
     if (moved) {
         generateTile();
         updateGrid();
+        checkGameOver();
     }
+
 }
+function checkGameOver() {
+
+    for (const cell of grid) {
+        if (Number(cell.dataset.value) === 2048) {
+            showEndScreen("Ganaste! 🎉");
+            return;
+        }
+    }
+
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            const current = Number(getCell(x, y).dataset.value);
+            if (current === 0) return;
+
+
+            const right = x < gridSize - 1 ? Number(getCell(x + 1, y).dataset.value) : null;
+            const down = y < gridSize - 1 ? Number(getCell(x, y + 1).dataset.value) : null;
+
+            if (current === right || current === down) return;
+        }
+    }
+
+
+    showEndScreen("Perdiste! 😢");
+}
+
+function showEndScreen(message) {
+    const endScreen = document.getElementById("end-screen");
+    document.getElementById("end-message").textContent = message;
+    endScreen.style.display = "flex";
+}
+function restartGame() {
+    for (const cell of grid) {
+        cell.dataset.value = 0;
+    }
+    score = 0;
+    updateGrid();
+    generateTile();
+    generateTile();
+    document.getElementById("end-screen").style.display = "none";
+}
+
+
 
 document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") move("left");
