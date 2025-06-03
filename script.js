@@ -17,12 +17,12 @@ function updateVersion() {
     const versionEl = document.getElementById("version");
 
     let label = "Bebe";
-    if (max >= 2048) label = "Deusa Suprema";
-    else if (max >= 1024) label = "Reina";
-    else if (max >= 512) label = "Influencer";
-    else if (max >= 256) label = "Diva";
-    else if (max >= 128) label = "Aceite en el pelo 💁‍♀️";
-    else if (max >= 64) label = "Estudiante 📕";
+    if (max >= 2048) label = "Adulta (legal) 🧑‍🦳";
+    else if (max >= 1024) label = "Madre Tierra 🌍";
+    else if (max >= 512) label = "Alaska 🐻";
+    else if (max >= 256) label = "Estudiante 📕";
+    else if (max >= 128) label = "Adicta 📱";
+    else if (max >= 64) label = "Playa 🏖️";
     else if (max >= 32) label = "Furry 🐾";
     else if (max >= 16) label = "Pasto 🌱";
     else if (max >= 8) label = "Halloween 👻";
