@@ -12,6 +12,24 @@ function createGrid() {
         grid.push(cell);
     }
 }
+function updateVersion() {
+    const max = Math.max(...grid.map(cell => Number(cell.dataset.value)));
+    const versionEl = document.getElementById("version");
+
+    let label = "Bebe";
+    if (max >= 2048) label = "Deusa Suprema";
+    else if (max >= 1024) label = "Reina";
+    else if (max >= 512) label = "Influencer";
+    else if (max >= 256) label = "Diva";
+    else if (max >= 128) label = "Estudiante";
+    else if (max >= 64) label = "Fashionista";
+    else if (max >= 32) label = "Pesada";
+    else if (max >= 16) label = "Adolescente";
+    else if (max >= 8) label = "Chiquita 🥹";
+    else if (max >= 4) label = "Bebe";
+
+    versionEl.textContent = label;
+}
 
 function getCell(x, y) {
     return grid[y * gridSize + x];
@@ -23,27 +41,35 @@ function generateTile() {
     const random = empty[Math.floor(Math.random() * empty.length)];
     random.dataset.value = 2;
     updateCellStyle(random);
+
+    random.classList.add('appear');
+    random.addEventListener('animationend', () => {
+        random.classList.remove('appear');
+    }, { once: true });
 }
 
 function updateCellStyle(cell) {
     const val = Number(cell.dataset.value);
     if (val === 0) {
         cell.style.backgroundImage = '';
+        cell.style.opacity = '1';
     } else {
-        const imgIndex = Math.log2(val); // 2 -> 1.png, 4 -> 2.png, etc.
+        const imgIndex = Math.log2(val);
         if (imgIndex >= 1 && imgIndex <= 11) {
             cell.style.backgroundImage = `url('./img/${imgIndex}.png')`;
-
         } else {
             cell.style.backgroundImage = '';
         }
+        cell.style.opacity = '1';
     }
 }
 
 function updateGrid() {
     grid.forEach(updateCellStyle);
     document.getElementById("score").textContent = score;
+    updateVersion();
 }
+
 
 function slide(row) {
     row = row.filter(val => val !== 0);
@@ -61,32 +87,48 @@ function slide(row) {
     return row;
 }
 
+function animateBounce(cell) {
+    cell.classList.add('bounce');
+    setTimeout(() => {
+        cell.classList.remove('bounce');
+    }, 400);
+}
+
 function move(direction) {
     let moved = false;
 
     for (let y = 0; y < gridSize; y++) {
         let row = [];
+        let oldValues = [];
+
         for (let x = 0; x < gridSize; x++) {
             const cell = direction === "left" ? getCell(x, y) :
-                direction === "right" ? getCell(gridSize - 1 - x, y) :
-                    direction === "up" ? getCell(y, x) :
-                        getCell(y, gridSize - 1 - x);
+                         direction === "right" ? getCell(gridSize - 1 - x, y) :
+                         direction === "up" ? getCell(y, x) :
+                         getCell(y, gridSize - 1 - x);
             row.push(Number(cell.dataset.value));
+            oldValues.push(Number(cell.dataset.value));
         }
 
-        const original = [...row];
         row = slide(row);
 
         for (let x = 0; x < gridSize; x++) {
             const val = row[x];
             const cell = direction === "left" ? getCell(x, y) :
-                direction === "right" ? getCell(gridSize - 1 - x, y) :
-                    direction === "up" ? getCell(y, x) :
-                        getCell(y, gridSize - 1 - x);
+                         direction === "right" ? getCell(gridSize - 1 - x, y) :
+                         direction === "up" ? getCell(y, x) :
+                         getCell(y, gridSize - 1 - x);
+
             if (Number(cell.dataset.value) !== val) {
                 moved = true;
             }
+
+            if (val > 0 && val > oldValues[x]) {
+                animateBounce(cell);
+            }
+
             cell.dataset.value = val;
+            updateCellStyle(cell);
         }
     }
 

@@ -1,36 +1,110 @@
- body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #faf8ef;
-      margin: 0;
-    }
+body {
+  font-family: 'Poppins', Arial, sans-serif;
+  text-align: center;
+  background: #E6E0F8; /* lilás claro suave */
+  margin: 0;
+  color: #5B2C6F; /* roxo escuro suave para texto */
+}
 
-    h1 {
-      margin: 20px;
-    }
+h1 {
+  margin: 30px 0 20px;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #9B59B6; /* roxo vibrante */
+  text-shadow: 1px 1px 3px #D7BDE2;
+  font-family: 'Pacifico', cursive;
+}
 
-    .score {
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(4, 80px);
-      grid-gap: 5px;
-      margin: auto;
-      width: 340px;
-    }
+.score-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  color: #AF7AC5;
+  font-family: 'Poppins', sans-serif;
+}
+.version {
+  font-weight: 600;
+}
 
-    .cell {
-      width: 80px;
-      height: 80px;
-      background: #eee4da;
-      background-size: cover;
-      background-position: center;
-      border-radius: 5px;
-    }
 
-    .cell[data-value="0"] {
-      background: #eee4da;
-    }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 120px);
+  grid-gap: 10px;
+  margin: auto;
+  width: 510px; /* 4*120 + 3*10 */
+  padding: 20px;
+  background: #F5EEF8;
+  border-radius: 20px;
+  box-shadow: 0 8px 15px rgba(155, 89, 182, 0.3);
+}
+
+.cell {
+  width: 120px;
+  height: 120px;
+  background: #F8E9F0; /* lilás bem claro */
+  background-size: cover;
+  background-position: center;
+  border-radius: 15px;
+  transition: background-image 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+  box-shadow: 0 4px 8px rgba(155, 89, 182, 0.2);
+  font-weight: 700;
+  font-size: 2.5rem;
+  color: #6C3483;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  font-family: 'Poppins', sans-serif;
+}
+
+.cell[data-value="0"] {
+  background: #F8E9F0;
+  background-image: none !important;
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: default;
+}
+
+@keyframes appearScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cell.appear {
+  animation: appearScale 0.3s ease forwards;
+}
+
+@keyframes bounce {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.02);
+  }
+  50% {
+    transform: scale(0.98);
+  }
+  70% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cell.bounce {
+  animation: bounce 0.4s;
+}
