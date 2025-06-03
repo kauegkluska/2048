@@ -21,12 +21,12 @@ function updateVersion() {
     else if (max >= 1024) label = "Reina";
     else if (max >= 512) label = "Influencer";
     else if (max >= 256) label = "Diva";
-    else if (max >= 128) label = "Estudiante";
-    else if (max >= 64) label = "Fashionista";
-    else if (max >= 32) label = "Pesada";
-    else if (max >= 16) label = "Adolescente";
-    else if (max >= 8) label = "Chiquita 🥹";
-    else if (max >= 4) label = "Bebe";
+    else if (max >= 128) label = "Aceite en el pelo 💁‍♀️";
+    else if (max >= 64) label = "Estudiante 📕";
+    else if (max >= 32) label = "Furry 🐾";
+    else if (max >= 16) label = "Pasto 🌱";
+    else if (max >= 8) label = "Halloween 👻";
+    else if (max >= 4) label = "Chiquita 🥹";
 
     versionEl.textContent = label;
 }
