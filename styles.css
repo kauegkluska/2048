@@ -6,6 +6,13 @@ body {
   color: #5B2C6F; /* roxo escuro suave para texto */
 }
 
+html, body {
+    height: 100%;
+    margin: 0;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
 h1 {
   margin: 30px 0 20px;
   font-size: 3rem;
@@ -130,4 +137,5 @@ h1 {
     gap: 10px;
     font-size: 1.2rem;
   }
+
 }

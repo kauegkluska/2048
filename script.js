@@ -103,9 +103,9 @@ function move(direction) {
 
         for (let x = 0; x < gridSize; x++) {
             const cell = direction === "left" ? getCell(x, y) :
-                         direction === "right" ? getCell(gridSize - 1 - x, y) :
-                         direction === "up" ? getCell(y, x) :
-                         getCell(y, gridSize - 1 - x);
+                direction === "right" ? getCell(gridSize - 1 - x, y) :
+                    direction === "up" ? getCell(y, x) :
+                        getCell(y, gridSize - 1 - x);
             row.push(Number(cell.dataset.value));
             oldValues.push(Number(cell.dataset.value));
         }
@@ -115,9 +115,9 @@ function move(direction) {
         for (let x = 0; x < gridSize; x++) {
             const val = row[x];
             const cell = direction === "left" ? getCell(x, y) :
-                         direction === "right" ? getCell(gridSize - 1 - x, y) :
-                         direction === "up" ? getCell(y, x) :
-                         getCell(y, gridSize - 1 - x);
+                direction === "right" ? getCell(gridSize - 1 - x, y) :
+                    direction === "up" ? getCell(y, x) :
+                        getCell(y, gridSize - 1 - x);
 
             if (Number(cell.dataset.value) !== val) {
                 moved = true;
@@ -148,25 +148,27 @@ document.addEventListener("keydown", e => {
 let startX, startY;
 
 document.addEventListener("touchstart", e => {
-  const touch = e.touches[0];
-  startX = touch.clientX;
-  startY = touch.clientY;
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
 });
 
 document.addEventListener("touchend", e => {
-  const touch = e.changedTouches[0];
-  const deltaX = touch.clientX - startX;
-  const deltaY = touch.clientY - startY;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
 
-  if (Math.abs(deltaX) > Math.abs(deltaY)) {
-    if (deltaX > 30) move("right");
-    else if (deltaX < -30) move("left");
-  } else {
-    if (deltaY > 30) move("down");
-    else if (deltaY < -30) move("up");
-  }
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (deltaX > 30) move("right");
+        else if (deltaX < -30) move("left");
+    } else {
+        if (deltaY > 30) move("down");
+        else if (deltaY < -30) move("up");
+    }
 });
-
+document.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+}, { passive: false });
 createGrid();
 generateTile();
 generateTile();
