@@ -39,7 +39,8 @@ function generateTile() {
     const empty = grid.filter(c => c.dataset.value == 0);
     if (empty.length === 0) return;
     const random = empty[Math.floor(Math.random() * empty.length)];
-    random.dataset.value = 2;
+    const value = Math.random() < 0.75 ? 2 : 4;
+    random.dataset.value = value;
     updateCellStyle(random);
 
     random.classList.add('appear');
