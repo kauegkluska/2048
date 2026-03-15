@@ -1,194 +1,323 @@
 const gridSize = 4;
-const grid = [];
 let score = 0;
 
+// Logical board: 2D array of tile objects or null
+// tile: { id, value, el }
+let board = [];
+let tileIdCounter = 0;
+let isAnimating = false;
+
+const gridEl = document.getElementById("grid");
+
+// ─── Setup empty cells (visual background only) ───────────────────────────────
 function createGrid() {
-    const gridEl = document.getElementById("grid");
     for (let i = 0; i < gridSize * gridSize; i++) {
         const cell = document.createElement("div");
         cell.className = "cell";
-        cell.dataset.value = 0;
         gridEl.appendChild(cell);
-        grid.push(cell);
+    }
+    // initialise empty board
+    for (let y = 0; y < gridSize; y++) {
+        board[y] = [];
+        for (let x = 0; x < gridSize; x++) {
+            board[y][x] = null;
+        }
     }
 }
-function updateVersion() {
-    const max = Math.max(...grid.map(cell => Number(cell.dataset.value)));
-    const versionEl = document.getElementById("version");
 
-    let label = "Bebe";
-    if (max >= 2048) label = "Adulta (legal) 🧑‍🦳";
-    else if (max >= 1024) label = "Madre Tierra 🌍";
-    else if (max >= 512) label = "Alaska 🐻";
-    else if (max >= 256) label = "Estudiante 📕";
-    else if (max >= 128) label = "Adicta 📱";
-    else if (max >= 64) label = "Playa 🏖️";
-    else if (max >= 32) label = "Furry 🐾";
-    else if (max >= 16) label = "Pasto 🌱";
-    else if (max >= 8) label = "Halloween 👻";
-    else if (max >= 4) label = "Chiquita 🥹";
+// ─── Tile geometry helpers ─────────────────────────────────────────────────────
 
-    versionEl.textContent = label;
+// Returns the computed inner width of the grid (excluding padding)
+function getGridInnerSize() {
+    const style = getComputedStyle(gridEl);
+    const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    return gridEl.clientWidth - padding;
 }
 
-function getCell(x, y) {
-    return grid[y * gridSize + x];
+function getCellSize() {
+    const gap = parseFloat(getComputedStyle(gridEl).gap) || 10;
+    return (getGridInnerSize() - gap * (gridSize - 1)) / gridSize;
 }
+
+function getCellOffset(pos) {
+    const gap = parseFloat(getComputedStyle(gridEl).gap) || 10;
+    const padding = parseFloat(getComputedStyle(gridEl).paddingLeft) || 10;
+    return padding + pos * (getCellSize() + gap);
+}
+
+// ─── Tile DOM helpers ──────────────────────────────────────────────────────────
+
+function createTileEl(value, x, y) {
+    const el = document.createElement("div");
+    el.className = "tile";
+    setTileStyle(el, value);
+    positionTileEl(el, x, y);
+    gridEl.appendChild(el);
+    return el;
+}
+
+function setTileStyle(el, value) {
+    const imgIndex = Math.log2(value);
+    if (imgIndex >= 1 && imgIndex <= 11) {
+        el.style.backgroundImage = `url('./img/${imgIndex}.png')`;
+    } else {
+        el.style.backgroundImage = '';
+    }
+    // size
+    const size = getCellSize();
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+}
+
+function positionTileEl(el, x, y) {
+    el.style.left = getCellOffset(x) + "px";
+    el.style.top  = getCellOffset(y) + "px";
+}
+
+// ─── Tile generation ───────────────────────────────────────────────────────────
 
 function generateTile() {
-    const empty = grid.filter(c => c.dataset.value == 0);
+    const empty = [];
+    for (let y = 0; y < gridSize; y++)
+        for (let x = 0; x < gridSize; x++)
+            if (!board[y][x]) empty.push({ x, y });
+
     if (empty.length === 0) return;
-    const random = empty[Math.floor(Math.random() * empty.length)];
+    const { x, y } = empty[Math.floor(Math.random() * empty.length)];
     const value = Math.random() < 0.75 ? 2 : 4;
-    random.dataset.value = value;
-    updateCellStyle(random);
 
-    random.classList.add('appear');
-    random.addEventListener('animationend', () => {
-        random.classList.remove('appear');
-    }, { once: true });
+    const el = createTileEl(value, x, y);
+    el.classList.add("appear");
+    el.addEventListener("animationend", () => el.classList.remove("appear"), { once: true });
+
+    board[y][x] = { id: tileIdCounter++, value, el };
 }
 
-function updateCellStyle(cell) {
-    const val = Number(cell.dataset.value);
-    if (val === 0) {
-        cell.style.backgroundImage = '';
-        cell.style.opacity = '1';
-    } else {
-        const imgIndex = Math.log2(val);
-        if (imgIndex >= 1 && imgIndex <= 11) {
-            cell.style.backgroundImage = `url('./img/${imgIndex}.png')`;
-        } else {
-            cell.style.backgroundImage = '';
+// ─── Version label ─────────────────────────────────────────────────────────────
+
+function updateVersion() {
+    let max = 0;
+    for (let y = 0; y < gridSize; y++)
+        for (let x = 0; x < gridSize; x++)
+            if (board[y][x]) max = Math.max(max, board[y][x].value);
+
+    let label = "Bebe";
+    if      (max >= 2048) label = "Adulta (legal) 🧑‍🦳";
+    else if (max >= 1024) label = "Madre Tierra 🌍";
+    else if (max >=  512) label = "Alaska 🐻";
+    else if (max >=  256) label = "Estudiante 📕";
+    else if (max >=  128) label = "Adicta 📱";
+    else if (max >=   64) label = "Playa 🏖️";
+    else if (max >=   32) label = "Furry 🐾";
+    else if (max >=   16) label = "Pasto 🌱";
+    else if (max >=    8) label = "Halloween 👻";
+    else if (max >=    4) label = "Chiquita 🥹";
+
+    document.getElementById("version").textContent = label;
+}
+
+// ─── Slide logic (operates on a 1-D row of tile objects or null) ───────────────
+
+// Returns { newRow, mergedIds, scoreGained }
+function slideRow(row) {
+    // filter out nulls
+    let filtered = row.filter(t => t !== null);
+    const mergedIds = new Set();
+    let scoreGained = 0;
+
+    for (let i = 0; i < filtered.length - 1; i++) {
+        if (filtered[i].value === filtered[i + 1].value &&
+            !mergedIds.has(filtered[i].id) &&
+            !mergedIds.has(filtered[i + 1].id)) {
+
+            filtered[i].value *= 2;
+            scoreGained += filtered[i].value;
+            mergedIds.add(filtered[i + 1].id); // mark the eaten tile
+            filtered[i + 1] = null;
         }
-        cell.style.opacity = '1';
     }
+
+    filtered = filtered.filter(t => t !== null);
+    while (filtered.length < gridSize) filtered.push(null);
+
+    return { newRow: filtered, mergedIds, scoreGained };
 }
 
-function updateGrid() {
-    grid.forEach(updateCellStyle);
-    document.getElementById("score").textContent = score;
-    updateVersion();
-}
-
-
-function slide(row) {
-    row = row.filter(val => val !== 0);
-    for (let i = 0; i < row.length - 1; i++) {
-        if (row[i] === row[i + 1]) {
-            row[i] *= 2;
-            score += row[i];
-            row[i + 1] = 0;
-        }
-    }
-    row = row.filter(val => val !== 0);
-    while (row.length < gridSize) {
-        row.push(0);
-    }
-    return row;
-}
-
-function animateBounce(cell) {
-    cell.classList.add('bounce');
-    setTimeout(() => {
-        cell.classList.remove('bounce');
-    }, 400);
-}
+// ─── Move ──────────────────────────────────────────────────────────────────────
 
 function move(direction) {
+    if (isAnimating) return;
+
     let moved = false;
+    const allMergedIds = new Set();
+    let totalScore = 0;
 
-    for (let y = 0; y < gridSize; y++) {
-        let row = [];
-        let oldValues = [];
-
-        for (let x = 0; x < gridSize; x++) {
-            const cell = direction === "left" ? getCell(x, y) :
-                direction === "right" ? getCell(gridSize - 1 - x, y) :
-                    direction === "up" ? getCell(y, x) :
-                        getCell(y, gridSize - 1 - x);
-            row.push(Number(cell.dataset.value));
-            oldValues.push(Number(cell.dataset.value));
+    // We iterate over "lines" — for each direction, a line is a row or column
+    for (let i = 0; i < gridSize; i++) {
+        // Extract the line as an array of tiles in slide-direction order
+        let line = [];
+        for (let j = 0; j < gridSize; j++) {
+            if (direction === "left")  line.push(board[i][j]);
+            if (direction === "right") line.push(board[i][gridSize - 1 - j]);
+            if (direction === "up")    line.push(board[j][i]);
+            if (direction === "down")  line.push(board[gridSize - 1 - j][i]);
         }
 
-        row = slide(row);
+        const { newRow, mergedIds, scoreGained } = slideRow(line);
+        totalScore += scoreGained;
+        mergedIds.forEach(id => allMergedIds.add(id));
 
-        for (let x = 0; x < gridSize; x++) {
-            const val = row[x];
-            const cell = direction === "left" ? getCell(x, y) :
-                direction === "right" ? getCell(gridSize - 1 - x, y) :
-                    direction === "up" ? getCell(y, x) :
-                        getCell(y, gridSize - 1 - x);
+        // Write the new line back to the board and update tile positions
+        for (let j = 0; j < gridSize; j++) {
+            let tx, ty;
+            if (direction === "left")  { tx = j;               ty = i; }
+            if (direction === "right") { tx = gridSize - 1 - j; ty = i; }
+            if (direction === "up")    { tx = i;               ty = j; }
+            if (direction === "down")  { tx = i;               ty = gridSize - 1 - j; }
 
-            if (Number(cell.dataset.value) !== val) {
-                moved = true;
+            const tile = newRow[j];
+            const prev = (direction === "left")  ? board[ty][tx] :
+                         (direction === "right") ? board[ty][tx] :
+                         (direction === "up")    ? board[ty][tx] :
+                                                   board[ty][tx];
+
+            if (tile !== prev) moved = true;
+            board[ty][tx] = tile;
+
+            if (tile) {
+                positionTileEl(tile.el, tx, ty); // CSS transition slides it
             }
-
-            if (val > 0 && val > oldValues[x]) {
-                animateBounce(cell);
-            }
-
-            cell.dataset.value = val;
-            updateCellStyle(cell);
         }
     }
 
-    if (moved) {
+    if (!moved) return;
+
+    score += totalScore;
+    document.getElementById("score").textContent = score;
+    isAnimating = true;
+
+    // After the slide transition, clean up merged tiles and spawn a new one
+    setTimeout(() => {
+        // Remove the "eaten" tiles from the DOM
+        allMergedIds.forEach(id => {
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const t = board[y][x];
+                    // the eaten tile was already overwritten in board; find it by DOM
+                }
+            }
+        });
+
+        // Find tiles whose id is in allMergedIds — they're still in the DOM
+        // but no longer in the board. Remove them.
+        const allTilesInDOM = Array.from(gridEl.querySelectorAll(".tile"));
+        const boardTileEls = new Set();
+        for (let y = 0; y < gridSize; y++)
+            for (let x = 0; x < gridSize; x++)
+                if (board[y][x]) boardTileEls.add(board[y][x].el);
+
+        allTilesInDOM.forEach(el => {
+            if (!boardTileEls.has(el)) el.remove();
+        });
+
+        // Update images of merged survivors and add pop animation
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const t = board[y][x];
+                if (t && allMergedIds.size > 0) {
+                    // Any tile that survived a merge has an updated value
+                    setTileStyle(t.el, t.value);
+                    if (totalScore > 0) {
+                        t.el.classList.add("merged");
+                        t.el.addEventListener("animationend", () => t.el.classList.remove("merged"), { once: true });
+                    }
+                }
+            }
+        }
+
         generateTile();
-        updateGrid();
+        updateVersion();
+        isAnimating = false;
         checkGameOver();
-    }
-
+    }, 140); // matches CSS transition duration
 }
-function checkGameOver() {
 
-    for (const cell of grid) {
-        if (Number(cell.dataset.value) === 2048) {
-            showEndScreen("Ganaste! 🎉");
-            return;
-        }
-    }
+// ─── Game over / win ───────────────────────────────────────────────────────────
+
+function checkGameOver() {
+    for (let y = 0; y < gridSize; y++)
+        for (let x = 0; x < gridSize; x++)
+            if (board[y][x] && board[y][x].value === 2048) {
+                showEndScreen("Ganaste! 🎉");
+                return;
+            }
 
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
-            const current = Number(getCell(x, y).dataset.value);
-            if (current === 0) return;
-
-
-            const right = x < gridSize - 1 ? Number(getCell(x + 1, y).dataset.value) : null;
-            const down = y < gridSize - 1 ? Number(getCell(x, y + 1).dataset.value) : null;
-
-            if (current === right || current === down) return;
+            if (!board[y][x]) return; // empty cell → not over
+            const v = board[y][x].value;
+            if (x < gridSize - 1 && board[y][x + 1] && board[y][x + 1].value === v) return;
+            if (y < gridSize - 1 && board[y + 1][x] && board[y + 1][x].value === v) return;
         }
     }
-
 
     showEndScreen("Perdiste! 😢");
 }
 
 function showEndScreen(message) {
-    const endScreen = document.getElementById("end-screen");
     document.getElementById("end-message").textContent = message;
-    endScreen.style.display = "flex";
+    document.getElementById("end-screen").style.display = "flex";
 }
+
+// ─── Restart ───────────────────────────────────────────────────────────────────
+
 function restartGame() {
-    for (const cell of grid) {
-        cell.dataset.value = 0;
-    }
+    // Remove all tile elements
+    gridEl.querySelectorAll(".tile").forEach(el => el.remove());
+
+    // Reset board
+    for (let y = 0; y < gridSize; y++)
+        for (let x = 0; x < gridSize; x++)
+            board[y][x] = null;
+
     score = 0;
-    updateGrid();
+    document.getElementById("score").textContent = 0;
+    isAnimating = false;
+
     generateTile();
     generateTile();
+    updateVersion();
     document.getElementById("end-screen").style.display = "none";
 }
 
+// ─── Resize: re-position all tiles when window resizes ────────────────────────
+window.addEventListener("resize", () => {
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            const t = board[y][x];
+            if (t) {
+                // disable transition momentarily so resize is instant
+                t.el.style.transition = "none";
+                setTileStyle(t.el, t.value);
+                positionTileEl(t.el, x, y);
+                // re-enable after paint
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        t.el.style.transition = "";
+                    });
+                });
+            }
+        }
+    }
+});
 
+// ─── Input ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener("keydown", e => {
-    if (e.key === "ArrowLeft") move("left");
-    else if (e.key === "ArrowRight") move("right");
-    else if (e.key === "ArrowUp") move("up");
-    else if (e.key === "ArrowDown") move("down");
+    if (e.key === "ArrowLeft")  { e.preventDefault(); move("left");  }
+    else if (e.key === "ArrowRight") { e.preventDefault(); move("right"); }
+    else if (e.key === "ArrowUp")    { e.preventDefault(); move("up");    }
+    else if (e.key === "ArrowDown")  { e.preventDefault(); move("down");  }
 });
 
 let startX, startY;
@@ -205,17 +334,18 @@ document.addEventListener("touchend", e => {
     const deltaY = touch.clientY - startY;
 
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (deltaX > 30) move("right");
+        if (deltaX >  30) move("right");
         else if (deltaX < -30) move("left");
     } else {
-        if (deltaY > 30) move("down");
+        if (deltaY >  30) move("down");
         else if (deltaY < -30) move("up");
     }
 });
-document.addEventListener('touchmove', function (e) {
-    e.preventDefault();
-}, { passive: false });
+
+document.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+
+// ─── Boot ──────────────────────────────────────────────────────────────────────
 createGrid();
 generateTile();
 generateTile();
-updateGrid();
+updateVersion();
