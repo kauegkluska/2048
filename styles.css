@@ -10,7 +10,6 @@ html, body {
   background: #E6E0F8; 
   color: #5B2C6F;
 }
-
 h1 {
   margin: 20px 0 10px; 
   font-size: 3rem;
@@ -20,7 +19,6 @@ h1 {
   text-shadow: 1px 1px 3px #D7BDE2;
   font-family: 'Pacifico', cursive;
 }
-
 #end-screen {
   position: fixed;
   top: 0;
@@ -36,14 +34,12 @@ h1 {
   justify-content: center;
   z-index: 1000;
 }
-
 #end-screen button {
   margin-top: 20px;
   padding: 10px 20px;
   font-size: 1em;
   cursor: pointer;
 }
-
 .score-panel {
   display: flex;
   justify-content: center;
@@ -53,7 +49,6 @@ h1 {
   font-size: 1.5rem;
   color: #AF7AC5;
 }
-
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr); 
@@ -66,8 +61,8 @@ h1 {
   border-radius: 20px;
   box-shadow: 0 4px 8px rgba(155, 89, 182, 0.3); 
   box-sizing: border-box;
+  position: relative; /* needed for absolute tile positioning */
 }
-
 .cell {
   aspect-ratio: 1 / 1; 
   width: 100%;
@@ -75,9 +70,8 @@ h1 {
   background-size: cover;
   background-position: center;
   border-radius: 15px;
-  transition: background-image 0.3s ease, opacity 0.3s ease;
-  opacity: 1;
-  box-shadow: 0 2px 4px rgba(155, 89, 182, 0.2); 
+  opacity: 0.5;
+  box-shadow: none;
   font-weight: 700;
   font-size: 2.5rem;
   color: #6C3483;
@@ -87,33 +81,44 @@ h1 {
   user-select: none;
 }
 
-.cell[data-value="0"] {
-  background: #F8E9F0;
-  background-image: none !important;
-  opacity: 0.5;
-  box-shadow: none;
-  cursor: default;
+/* Sliding tiles — absolutely positioned on top of the cell grid */
+.tile {
+  position: absolute;
+  border-radius: 15px;
+  background-size: cover;
+  background-position: center;
+  background-color: #F8E9F0;
+  box-shadow: 0 2px 4px rgba(155, 89, 182, 0.2);
+  font-weight: 700;
+  font-size: 2.5rem;
+  color: #6C3483;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  /* slide animation */
+  transition: top 0.12s ease, left 0.12s ease;
+  z-index: 10;
+  box-sizing: border-box;
 }
 
 @keyframes appearScale {
   0% { opacity: 0; transform: scale(0.5); }
   100% { opacity: 1; transform: scale(1); }
 }
-
-.cell.appear {
+.tile.appear {
   animation: appearScale 0.3s ease forwards;
 }
 
-@keyframes bounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.02); }
-  50% { transform: scale(0.98); }
-  70% { transform: scale(1.02); }
+@keyframes mergedPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.15); }
+  70%  { transform: scale(0.93); }
   100% { transform: scale(1); }
 }
-
-.cell.bounce {
-  animation: bounce 0.4s;
+.tile.merged {
+  animation: mergedPop 0.25s ease forwards;
+  z-index: 20;
 }
 
 @media (max-width: 600px) {
@@ -121,16 +126,13 @@ h1 {
     gap: 8px;
     padding: 10px;
   }
-
-  .cell {
+  .tile {
     font-size: 1.2rem;
   }
-
   h1 {
     font-size: 2rem;
     margin: 20px 10px;
   }
-
   .score-panel {
     flex-direction: column;
     gap: 10px;
