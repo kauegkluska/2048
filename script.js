@@ -131,6 +131,7 @@ function slideRow(row) {
             !mergedIds.has(filtered[i + 1].id)) {
 
             filtered[i].value *= 2;
+            filtered[i].justMerged = true; // flag so we update its image later
             scoreGained += filtered[i].value;
             mergedIds.add(filtered[i + 1].id); // mark the eaten tile
             filtered[i + 1] = null;
@@ -220,17 +221,13 @@ function move(direction) {
             if (!boardTileEls.has(el)) el.remove();
         });
 
-        // Update images of merged survivors and add pop animation
+        // Update images only for tiles that actually merged (doubled in value)
         for (let y = 0; y < gridSize; y++) {
             for (let x = 0; x < gridSize; x++) {
                 const t = board[y][x];
-                if (t && allMergedIds.size > 0) {
-                    // Any tile that survived a merge has an updated value
+                if (t && t.justMerged) {
                     setTileStyle(t.el, t.value);
-                    if (totalScore > 0) {
-                        t.el.classList.add("merged");
-                        t.el.addEventListener("animationend", () => t.el.classList.remove("merged"), { once: true });
-                    }
+                    delete t.justMerged;
                 }
             }
         }
