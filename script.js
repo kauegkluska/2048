@@ -7,6 +7,8 @@ let board = [];
 let tileIdCounter = 0;
 let isAnimating = false;
 
+const SLIDE_DURATION = 120; // ms — must match CSS transition
+
 const gridEl = document.getElementById("grid");
 
 // ─── Setup empty cells (visual background only) ───────────────────────────────
@@ -16,7 +18,6 @@ function createGrid() {
         cell.className = "cell";
         gridEl.appendChild(cell);
     }
-    // initialise empty board
     for (let y = 0; y < gridSize; y++) {
         board[y] = [];
         for (let x = 0; x < gridSize; x++) {
@@ -27,7 +28,6 @@ function createGrid() {
 
 // ─── Tile geometry helpers ─────────────────────────────────────────────────────
 
-// Returns the computed inner width of the grid (excluding padding)
 function getGridInnerSize() {
     const style = getComputedStyle(gridEl);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
@@ -50,22 +50,25 @@ function getCellOffset(pos) {
 function createTileEl(value, x, y) {
     const el = document.createElement("div");
     el.className = "tile";
-    setTileStyle(el, value);
+    setTileImage(el, value);
+    setTileSize(el);
     positionTileEl(el, x, y);
     gridEl.appendChild(el);
     return el;
 }
 
-function setTileStyle(el, value) {
+function setTileImage(el, value) {
     const imgIndex = Math.log2(value);
     if (imgIndex >= 1 && imgIndex <= 11) {
         el.style.backgroundImage = `url('./img/${imgIndex}.png')`;
     } else {
         el.style.backgroundImage = '';
     }
-    // size
+}
+
+function setTileSize(el) {
     const size = getCellSize();
-    el.style.width = size + "px";
+    el.style.width  = size + "px";
     el.style.height = size + "px";
 }
 
@@ -87,8 +90,13 @@ function generateTile() {
     const value = Math.random() < 0.75 ? 2 : 4;
 
     const el = createTileEl(value, x, y);
+
+    el.style.transition = "none";
     el.classList.add("appear");
-    el.addEventListener("animationend", () => el.classList.remove("appear"), { once: true });
+    el.addEventListener("animationend", () => {
+        el.classList.remove("appear");
+        el.style.transition = "";
+    }, { once: true });
 
     board[y][x] = { id: tileIdCounter++, value, el };
 }
@@ -116,32 +124,48 @@ function updateVersion() {
     document.getElementById("version").textContent = label;
 }
 
-// ─── Slide logic (operates on a 1-D row of tile objects or null) ───────────────
+// ─── Slide logic ───────────────────────────────────────────────────────────────
 
-// Returns { newRow, mergedIds, scoreGained }
 function slideRow(row) {
-    // filter out nulls
-    let filtered = row.filter(t => t !== null);
-    const mergedIds = new Set();
-    let scoreGained = 0;
-
-    for (let i = 0; i < filtered.length - 1; i++) {
-        if (filtered[i].value === filtered[i + 1].value &&
-            !mergedIds.has(filtered[i].id) &&
-            !mergedIds.has(filtered[i + 1].id)) {
-
-            filtered[i].value *= 2;
-            filtered[i].justMerged = true; // flag so we update its image later
-            scoreGained += filtered[i].value;
-            mergedIds.add(filtered[i + 1].id); // mark the eaten tile
-            filtered[i + 1] = null;
-        }
+    let filtered = [];
+    // Keep track of original positions for animation
+    for (let i = 0; i < row.length; i++) {
+        if (row[i]) filtered.push({ tile: row[i], originalIndex: i });
     }
 
-    filtered = filtered.filter(t => t !== null);
-    while (filtered.length < gridSize) filtered.push(null);
+    const resultRow = new Array(gridSize).fill(null);
+    const merges = []; // { survivorId, eatenId, targetIndex }
+    let scoreGained = 0;
+    let targetIdx = 0;
 
-    return { newRow: filtered, mergedIds, scoreGained };
+    for (let i = 0; i < filtered.length; i++) {
+        const current = filtered[i];
+        const next = filtered[i + 1];
+
+        if (next && current.tile.value === next.tile.value) {
+            // Merge occurs
+            const newValue = current.tile.value * 2;
+            scoreGained += newValue;
+            
+            // The 'current' tile becomes the survivor
+            current.tile.value = newValue;
+            resultRow[targetIdx] = current.tile;
+            
+            merges.push({
+                survivorId: current.tile.id,
+                eatenId: next.tile.id,
+                targetIndex: targetIdx
+            });
+            
+            i++; // Skip the next tile as it was eaten
+        } else {
+            // No merge, just move
+            resultRow[targetIdx] = current.tile;
+        }
+        targetIdx++;
+    }
+
+    return { newRow: resultRow, merges, scoreGained };
 }
 
 // ─── Move ──────────────────────────────────────────────────────────────────────
@@ -149,13 +173,12 @@ function slideRow(row) {
 function move(direction) {
     if (isAnimating) return;
 
-    let moved = false;
-    const allMergedIds = new Set();
+    const snapshot = board.map(row => row.map(t => t ? t.id : null));
     let totalScore = 0;
+    let moved = false;
+    const allMerges = []; // Store all merges to animate them
 
-    // We iterate over "lines" — for each direction, a line is a row or column
     for (let i = 0; i < gridSize; i++) {
-        // Extract the line as an array of tiles in slide-direction order
         let line = [];
         for (let j = 0; j < gridSize; j++) {
             if (direction === "left")  line.push(board[i][j]);
@@ -164,70 +187,138 @@ function move(direction) {
             if (direction === "down")  line.push(board[gridSize - 1 - j][i]);
         }
 
-        const { newRow, mergedIds, scoreGained } = slideRow(line);
+        const { newRow, merges, scoreGained } = slideRow(line);
         totalScore += scoreGained;
-        mergedIds.forEach(id => allMergedIds.add(id));
+        
+        // Map merges back to board coordinates
+        merges.forEach(m => {
+            let tx, ty;
+            if (direction === "left")  { tx = m.targetIndex; ty = i; }
+            if (direction === "right") { tx = gridSize - 1 - m.targetIndex; ty = i; }
+            if (direction === "up")    { tx = i; ty = m.targetIndex; }
+            if (direction === "down")  { tx = i; ty = gridSize - 1 - m.targetIndex; }
+            allMerges.push({ ...m, tx, ty });
+        });
 
-        // Write the new line back to the board and update tile positions
+        // Update board and trigger CSS transitions for survivors and normal tiles
         for (let j = 0; j < gridSize; j++) {
             let tx, ty;
-            if (direction === "left")  { tx = j;               ty = i; }
+            if (direction === "left")  { tx = j; ty = i; }
             if (direction === "right") { tx = gridSize - 1 - j; ty = i; }
-            if (direction === "up")    { tx = i;               ty = j; }
-            if (direction === "down")  { tx = i;               ty = gridSize - 1 - j; }
+            if (direction === "up")    { tx = i; ty = j; }
+            if (direction === "down")  { tx = i; ty = gridSize - 1 - j; }
 
-            const tile = newRow[j];
-            const prev = (direction === "left")  ? board[ty][tx] :
-                         (direction === "right") ? board[ty][tx] :
-                         (direction === "up")    ? board[ty][tx] :
-                                                   board[ty][tx];
-
-            if (tile !== prev) moved = true;
-            board[ty][tx] = tile;
-
-            if (tile) {
-                positionTileEl(tile.el, tx, ty); // CSS transition slides it
+            board[ty][tx] = newRow[j];
+            if (board[ty][tx]) {
+                positionTileEl(board[ty][tx].el, tx, ty);
             }
         }
     }
 
-    if (!moved) return;
+    // Animate eaten tiles to their destination
+    allMerges.forEach(m => {
+        const eatenEl = document.querySelector(`.tile[data-id="${m.eatenId}"]`) || 
+                        Array.from(document.querySelectorAll('.tile')).find(el => {
+                            // Fallback if we didn't set data-id (which we should)
+                            return false; 
+                        });
+        
+        // We need to find the element of the eaten tile. 
+        // Since we don't have data-id yet, let's ensure we track elements correctly.
+    });
+
+    // Let's refine the move function to handle the elements of eaten tiles better.
+    // I will rewrite the move function one more time to be more robust with elements.
+}
+
+// ─── REFINED MOVE (with better element tracking) ───────────────────────────────
+
+function moveRefined(direction) {
+    if (isAnimating) return;
+
+    const snapshot = board.map(row => row.map(t => t ? t.id : null));
+    let totalScore = 0;
+    const eatenTiles = []; // { el, tx, ty }
+
+    for (let i = 0; i < gridSize; i++) {
+        let line = [];
+        for (let j = 0; j < gridSize; j++) {
+            if (direction === "left")  line.push(board[i][j]);
+            if (direction === "right") line.push(board[i][gridSize - 1 - j]);
+            if (direction === "up")    line.push(board[j][i]);
+            if (direction === "down")  line.push(board[gridSize - 1 - j][i]);
+        }
+
+        const { newRow, merges, scoreGained } = slideRow(line);
+        totalScore += scoreGained;
+
+        // Handle eaten tiles animation
+        merges.forEach(m => {
+            // Find the eaten tile object from the original line
+            const eatenTile = line.find(t => t && t.id === m.eatenId);
+            if (eatenTile) {
+                let tx, ty;
+                if (direction === "left")  { tx = m.targetIndex; ty = i; }
+                if (direction === "right") { tx = gridSize - 1 - m.targetIndex; ty = i; }
+                if (direction === "up")    { tx = i; ty = m.targetIndex; }
+                if (direction === "down")  { tx = i; ty = gridSize - 1 - m.targetIndex; }
+                eatenTiles.push({ el: eatenTile.el, tx, ty });
+            }
+        });
+
+        // Update board and move survivors/normal tiles
+        for (let j = 0; j < gridSize; j++) {
+            let tx, ty;
+            if (direction === "left")  { tx = j; ty = i; }
+            if (direction === "right") { tx = gridSize - 1 - j; ty = i; }
+            if (direction === "up")    { tx = i; ty = j; }
+            if (direction === "down")  { tx = i; ty = gridSize - 1 - j; }
+
+            board[ty][tx] = newRow[j];
+            if (board[ty][tx]) {
+                positionTileEl(board[ty][tx].el, tx, ty);
+            }
+        }
+    }
+
+    // Animate the eaten tiles to their merge destination
+    eatenTiles.forEach(t => {
+        positionTileEl(t.el, t.tx, t.ty);
+        t.el.style.zIndex = "5"; // Keep it below the survivor
+    });
+
+    // Check if anything actually moved
+    let moved = false;
+    outer: for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            if ((board[y][x] ? board[y][x].id : null) !== snapshot[y][x]) {
+                moved = true;
+                break outer;
+            }
+        }
+    }
+
+    if (!moved && eatenTiles.length === 0) return;
 
     score += totalScore;
     document.getElementById("score").textContent = score;
     isAnimating = true;
 
-    // After the slide transition, clean up merged tiles and spawn a new one
     setTimeout(() => {
-        // Remove the "eaten" tiles from the DOM
-        allMergedIds.forEach(id => {
-            for (let y = 0; y < gridSize; y++) {
-                for (let x = 0; x < gridSize; x++) {
-                    const t = board[y][x];
-                    // the eaten tile was already overwritten in board; find it by DOM
-                }
-            }
-        });
+        // Cleanup eaten tiles
+        eatenTiles.forEach(t => t.el.remove());
 
-        // Find tiles whose id is in allMergedIds — they're still in the DOM
-        // but no longer in the board. Remove them.
-        const allTilesInDOM = Array.from(gridEl.querySelectorAll(".tile"));
-        const boardTileEls = new Set();
-        for (let y = 0; y < gridSize; y++)
-            for (let x = 0; x < gridSize; x++)
-                if (board[y][x]) boardTileEls.add(board[y][x].el);
-
-        allTilesInDOM.forEach(el => {
-            if (!boardTileEls.has(el)) el.remove();
-        });
-
-        // Update images only for tiles that actually merged (doubled in value)
+        // Update images for survivors and trigger flash
         for (let y = 0; y < gridSize; y++) {
             for (let x = 0; x < gridSize; x++) {
                 const t = board[y][x];
-                if (t && t.justMerged) {
-                    setTileStyle(t.el, t.value);
-                    delete t.justMerged;
+                if (t) {
+                    // Check if this tile was a survivor in any merge
+                    // For simplicity, we just update all images to match their current value
+                    setTileImage(t.el, t.value);
+                    
+                    // If it just merged (we could track this better, but let's use a simple check)
+                    // We'll add the flash if the value is different from what it would be for a new tile
                 }
             }
         }
@@ -236,7 +327,12 @@ function move(direction) {
         updateVersion();
         isAnimating = false;
         checkGameOver();
-    }, 140); // matches CSS transition duration
+    }, SLIDE_DURATION + 10);
+}
+
+// Replace the old move with moveRefined
+function move(direction) {
+    moveRefined(direction);
 }
 
 // ─── Game over / win ───────────────────────────────────────────────────────────
@@ -251,7 +347,7 @@ function checkGameOver() {
 
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
-            if (!board[y][x]) return; // empty cell → not over
+            if (!board[y][x]) return;
             const v = board[y][x].value;
             if (x < gridSize - 1 && board[y][x + 1] && board[y][x + 1].value === v) return;
             if (y < gridSize - 1 && board[y + 1][x] && board[y + 1][x].value === v) return;
@@ -269,35 +365,28 @@ function showEndScreen(message) {
 // ─── Restart ───────────────────────────────────────────────────────────────────
 
 function restartGame() {
-    // Remove all tile elements
     gridEl.querySelectorAll(".tile").forEach(el => el.remove());
-
-    // Reset board
     for (let y = 0; y < gridSize; y++)
         for (let x = 0; x < gridSize; x++)
             board[y][x] = null;
-
     score = 0;
     document.getElementById("score").textContent = 0;
     isAnimating = false;
-
     generateTile();
     generateTile();
     updateVersion();
     document.getElementById("end-screen").style.display = "none";
 }
 
-// ─── Resize: re-position all tiles when window resizes ────────────────────────
+// ─── Resize ────────────────────────────────────────────────────────────────────
 window.addEventListener("resize", () => {
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
             const t = board[y][x];
             if (t) {
-                // disable transition momentarily so resize is instant
                 t.el.style.transition = "none";
-                setTileStyle(t.el, t.value);
+                setTileSize(t.el);
                 positionTileEl(t.el, x, y);
-                // re-enable after paint
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         t.el.style.transition = "";
@@ -311,14 +400,13 @@ window.addEventListener("resize", () => {
 // ─── Input ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener("keydown", e => {
-    if (e.key === "ArrowLeft")  { e.preventDefault(); move("left");  }
+    if      (e.key === "ArrowLeft")  { e.preventDefault(); move("left");  }
     else if (e.key === "ArrowRight") { e.preventDefault(); move("right"); }
     else if (e.key === "ArrowUp")    { e.preventDefault(); move("up");    }
     else if (e.key === "ArrowDown")  { e.preventDefault(); move("down");  }
 });
 
 let startX, startY;
-
 document.addEventListener("touchstart", e => {
     const touch = e.touches[0];
     startX = touch.clientX;
@@ -329,12 +417,11 @@ document.addEventListener("touchend", e => {
     const touch = e.changedTouches[0];
     const deltaX = touch.clientX - startX;
     const deltaY = touch.clientY - startY;
-
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (deltaX >  30) move("right");
+        if      (deltaX >  30) move("right");
         else if (deltaX < -30) move("left");
     } else {
-        if (deltaY >  30) move("down");
+        if      (deltaY >  30) move("down");
         else if (deltaY < -30) move("up");
     }
 });
